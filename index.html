@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101418">
+  <title>Target Practice</title>
+  <meta name="description" content="Analisi del tiro al bersaglio: fotografa il bersaglio, segna i colpi e calcola rosata, raggio medio, punteggio e correzione delle mire.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true"></span>
+      <span>Target Practice</span>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-view="capture">1 · Scatto</button>
+      <button class="tab" data-view="target">2 · Bersaglio</button>
+      <button class="tab" data-view="shots">3 · Colpi</button>
+      <button class="tab" data-view="results">4 · Risultati</button>
+      <button class="tab" data-view="history">Storico</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 1. SCATTO -->
+    <section class="view active" id="view-capture">
+      <div class="camera-wrap">
+        <video id="video" playsinline autoplay muted></video>
+        <div class="camera-guide" aria-hidden="true"><div class="guide-circle"></div></div>
+        <div class="camera-hint" id="camera-hint">Inquadra il bersaglio dentro il cerchio e scatta</div>
+      </div>
+      <div class="toolbar">
+        <button class="btn primary" id="btn-shoot">📷 Scatta</button>
+        <button class="btn" id="btn-flip" title="Cambia fotocamera">🔄</button>
+        <label class="btn file">
+          🖼️ Carica foto
+          <input type="file" id="file-input" accept="image/*" hidden>
+        </label>
+        <button class="btn ghost" id="btn-demo">🎯 Bersaglio di prova</button>
+      </div>
+      <p class="note" id="camera-status"></p>
+      <details class="help">
+        <summary>Consigli per una buona foto</summary>
+        <ul>
+          <li>Metti il bersaglio tutto dentro l'inquadratura, il più possibile frontale (perpendicolare).</li>
+          <li>Luce uniforme, senza ombre dure: i fori devono risaltare sulla carta.</li>
+          <li>Il programma trova il cerchio del bersaglio da solo; se sbaglia lo correggi con le dita.</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- STAGE condiviso (bersaglio + colpi) -->
+    <section class="stage" id="stage" hidden>
+      <canvas id="canvas"></canvas>
+      <div class="stage-overlay" id="stage-overlay"></div>
+    </section>
+
+    <!-- 2. BERSAGLIO -->
+    <section class="view" id="view-target">
+      <div class="panel">
+        <p class="note" id="detect-status">Nessuna immagine. Scatta una foto o caricane una.</p>
+        <div class="row wrap">
+          <button class="btn" id="btn-redetect">🔍 Rileva di nuovo</button>
+          <button class="btn" id="btn-center-reset">⌖ Metti al centro</button>
+          <button class="btn" id="btn-fit">⤢ Adatta</button>
+        </div>
+        <div class="fine">
+          <div class="fine-group">
+            <span class="fine-label">Centro</span>
+            <button class="btn sm" data-nudge="0,-1">↑</button>
+            <button class="btn sm" data-nudge="-1,0">←</button>
+            <button class="btn sm" data-nudge="1,0">→</button>
+            <button class="btn sm" data-nudge="0,1">↓</button>
+          </div>
+          <div class="fine-group">
+            <span class="fine-label">Raggio</span>
+            <button class="btn sm" data-radius="-1">−</button>
+            <button class="btn sm" data-radius="1">+</button>
+          </div>
+        </div>
+        <p class="note small">Trascina il centro o un punto sul bordo per correggere a mano. Due dita per zoom.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Calibrazione</h3>
+        <div class="grid2">
+          <label>Bersaglio
+            <select id="preset"></select>
+          </label>
+          <label>Il cerchio tracciato è
+            <select id="circle-kind"></select>
+          </label>
+          <label>Diametro reale (mm)
+            <input type="number" id="circle-mm" step="0.1" min="1">
+          </label>
+          <label>Calibro (mm)
+            <input type="number" id="caliber" step="0.1" min="1">
+          </label>
+          <label>Distanza (m)
+            <input type="number" id="distance" step="0.5" min="1">
+          </label>
+          <label>Click mire (MOA)
+            <select id="click-moa">
+              <option value="0.125">1/8 MOA</option>
+              <option value="0.25" selected>1/4 MOA</option>
+              <option value="0.5">1/2 MOA</option>
+              <option value="1">1 MOA</option>
+              <option value="0.3438">0,1 mil</option>
+            </select>
+          </label>
+        </div>
+        <div class="grid2" id="custom-target" hidden>
+          <label>Diametro anello 10 (mm)
+            <input type="number" id="d10" step="0.1" min="0.1">
+          </label>
+          <label>Larghezza anello (mm)
+            <input type="number" id="ring-step" step="0.1" min="0.1">
+          </label>
+        </div>
+        <p class="note small" id="scale-info"></p>
+      </div>
+      <div class="toolbar">
+        <button class="btn primary" id="btn-to-shots">Avanti: segna i colpi →</button>
+      </div>
+    </section>
+
+    <!-- 3. COLPI -->
+    <section class="view" id="view-shots">
+      <div class="panel">
+        <div class="row space">
+          <strong id="shot-count">0 colpi</strong>
+          <span class="note small">Tocca per aggiungere · trascina per spostare · tocca un colpo per selezionarlo</span>
+        </div>
+        <div class="row wrap">
+          <button class="btn" id="btn-detect-holes">✨ Rileva fori (sperimentale)</button>
+          <button class="btn" id="btn-undo">↶ Annulla ultimo</button>
+          <button class="btn danger" id="btn-delete-sel" disabled>🗑 Elimina selezionato</button>
+          <button class="btn ghost" id="btn-clear">Svuota</button>
+        </div>
+        <label class="row">
+          <input type="checkbox" id="show-rings" checked> Mostra anelli e punteggio
+        </label>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="btn-back-target">← Bersaglio</button>
+        <button class="btn primary" id="btn-to-results">Risultati →</button>
+      </div>
+    </section>
+
+    <!-- 4. RISULTATI -->
+    <section class="view" id="view-results">
+      <div id="results-empty" class="panel"><p class="note">Nessun colpo segnato.</p></div>
+      <div id="results-body" hidden>
+        <div class="panel">
+          <div class="row space">
+            <h3 id="res-title">Risultati</h3>
+            <span class="badge" id="res-preset"></span>
+          </div>
+          <div class="hero">
+            <div class="hero-main">
+              <div class="hero-value" id="res-es">–</div>
+              <div class="hero-label">Rosata (centro-centro)</div>
+              <div class="hero-sub" id="res-es-sub"></div>
+            </div>
+            <div class="hero-side">
+              <div class="hero-value small" id="res-score">–</div>
+              <div class="hero-label">Punteggio</div>
+              <div class="hero-sub" id="res-score-sub"></div>
+            </div>
+          </div>
+          <div class="cards" id="res-cards"></div>
+        </div>
+
+        <div class="panel">
+          <h3>Correzione mire</h3>
+          <p class="note small">Il centro del gruppo rispetto al centro del bersaglio. Le correzioni sono indicative: verifica con una seconda serie.</p>
+          <div class="sight" id="res-sight"></div>
+        </div>
+
+        <div class="panel">
+          <h3>Colpo per colpo</h3>
+          <div class="table-wrap">
+            <table id="res-table">
+              <thead><tr><th>#</th><th>x (mm)</th><th>y (mm)</th><th>dal centro</th><th>dal gruppo</th><th>anello</th><th>decimale</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Sessione</h3>
+          <div class="grid2">
+            <label>Nome / arma
+              <input type="text" id="session-name" placeholder="es. Carabina, serie 1">
+            </label>
+            <label>Note
+              <input type="text" id="session-notes" placeholder="munizione, condizioni, posizione…">
+            </label>
+          </div>
+          <div class="row wrap">
+            <button class="btn primary" id="btn-save">💾 Salva nello storico</button>
+            <button class="btn" id="btn-export-png">🖼️ Immagine annotata</button>
+            <button class="btn" id="btn-export-csv">⬇️ CSV</button>
+            <button class="btn" id="btn-export-json">⬇️ JSON</button>
+          </div>
+          <p class="note small" id="save-status"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. STORICO -->
+    <section class="view" id="view-history">
+      <div class="panel">
+        <div class="row space">
+          <h3>Storico sessioni</h3>
+          <div class="row">
+            <button class="btn sm" id="btn-history-export">⬇️ Esporta tutto</button>
+            <label class="btn sm file">⬆️ Importa<input type="file" id="history-import" accept="application/json" hidden></label>
+          </div>
+        </div>
+        <p class="note small">Le sessioni restano salvate su questo dispositivo (nessun server).</p>
+        <div class="charts">
+          <figure class="chart">
+            <figcaption>Raggio medio (mm) per sessione</figcaption>
+            <canvas id="chart-radius" height="160"></canvas>
+          </figure>
+          <figure class="chart">
+            <figcaption>Punteggio medio per colpo</figcaption>
+            <canvas id="chart-score" height="160"></canvas>
+          </figure>
+        </div>
+        <div class="chart-tip" id="chart-tip" hidden></div>
+      </div>
+      <div id="history-list"></div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

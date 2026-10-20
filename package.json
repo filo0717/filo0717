@@ -1,0 +1,12 @@
+{
+  "name": "target-practice",
+  "version": "1.0.0",
+  "description": "Analisi del tiro al bersaglio dalla fotocamera: rosata, raggio medio, punteggio, correzione mire.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "start": "python3 -m http.server 8080"
+  },
+  "license": "MIT"
+}

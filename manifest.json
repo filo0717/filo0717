@@ -1,0 +1,16 @@
+{
+  "name": "Target Practice",
+  "short_name": "Target",
+  "description": "Analisi del tiro al bersaglio: rosata, raggio medio, punteggio e correzione delle mire.",
+  "lang": "it",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#101418",
+  "theme_color": "#101418",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
